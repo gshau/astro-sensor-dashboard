@@ -1,6 +1,5 @@
 import time
 import logging
-
 import requests
 import json
 import paho.mqtt.client as mqtt
@@ -11,36 +10,36 @@ logFormatter = logging.Formatter(
 )
 log = logging.getLogger()
 
-def get_data():
-    ip_address = '10.0.5.96'
-    port = 5000
-    url = f'http://{ip_address}:{port}'
+SLEEP_TIME = 15
+SENSOR_IP_ADDRESS = '10.0.5.96'
+PORT = 5000
+
+def request_data():
+    url = f'http://{SENSOR_IP_ADDRESS}:{PORT}'
     response = requests.get(url)
     if response.status_code == 200:
         return response.json()
+    else:
+        log.warning(f'Response from {url}: {response.status_code}')
     return {}
 
 def on_log(client, data, level, buf):
     log.info(f"log: {buf}")
 
 
-def parse_data():
-    mqtt_broker_address = "10.0.5.50"
+if __name__ == "__main__":
     while True:
         try:
             client = mqtt.Client("astro_sensor", clean_session=False)
-            client.connect(mqtt_broker_address)
+            client.connect('mosquitto')
             client.on_log = on_log
             log.info("Pushing data")
-            data = get_data()
+            data = request_data()
             log.info(json.dumps(data))
             client.publish("sensors/astro_sensor", json.dumps(data))
             client.disconnect()
-            time.sleep(15)
         except:
             log.info("Issue with pushing data", exc_info=True)
-            time.sleep(15)
+        time.sleep(SLEEP_TIME)
 
 
-if __name__ == "__main__":
-    parse_data()
