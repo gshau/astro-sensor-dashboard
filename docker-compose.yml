@@ -1,0 +1,69 @@
+version: "3.8"
+
+services:
+  mosquitto:
+    container_name: mosquitto
+    image: toke/mosquitto
+    restart: always
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    networks:
+      - iot
+  
+  influxdb:
+    container_name: influxdb
+    image: influxdb:1.8.4
+    restart: always
+    ports:
+      - "8086:8086"
+      - "8083:8083"
+    environment:
+      - INFLUXDB_DB=telegraf
+      - INFLUXDB_USER=telegraf
+      - INFLUXDB_USER_PASSWORD=telegraf
+      - INFLUXDB_ADMIN_ENABLED=true
+    networks:
+      - iot
+    volumes:
+      - influxdb-data:/var/lib/influxdb
+  
+  telegraf:
+    container_name: telegraf
+    image: telegraf
+    restart: always
+    volumes:
+      - ./telegraf.conf:/etc/telegraf/telegraf.conf
+    depends_on:
+      - mosquitto
+      - influxdb
+    networks:
+      - iot
+  
+  grafana:
+    container_name: grafana
+    image: grafana/grafana
+    restart: always
+    ports:
+      - "3000:3000"
+    networks:
+      - iot
+    volumes:
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - influxdb
+
+  astrosensor_to_mqtt:
+    build: .
+    command: ["python", "main.py"]
+    container_name: astrosensor_to_mqtt
+    restart: on-failure
+    depends_on:
+      - mosquitto
+          
+networks:
+  iot:
+
+volumes:
+  influxdb-data:
+  grafana-data:
